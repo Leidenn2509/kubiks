@@ -498,26 +498,39 @@ class RubiksCube:
                 if not self.analyze(frame):
                     continue
                 width = 20
-                for (con, hsv) in zip(self.candidates, self.data.values()):
+                for (con, hsv) in zip(self.sort_by_row_col(deepcopy(self.candidates), self.size), self.data.values()):
                     if con.width:
                         # hsv = cv2.cvtColor(np.uint8([[(color[2], color[1], color[0])]]), cv2.COLOR_BGR2HSV)[0][0]
                         # print(hsv)
                         minHSV = np.array([98, 109, 20])
                         maxHSV = np.array([130, 255, 255])
-                        print(hsv)
-                        print(minHSV)
-                        print(maxHSV)
+
+                        # print(minHSV)
+                        # print(maxHSV)
                         print("++++++++")
-                        print(cv2.inRange(np.uint8([[hsv]]), minHSV, maxHSV))
+                        # print(cv2.inRange(np.uint8([[hsv]]), minHSV, maxHSV))
+                        # white
                         if hsv[1] < 50:
                             color = (255, 255, 255)
+                        # blue
                         elif 98 <= hsv[0] <= 130 and 109 <= hsv[1] <= 255 and 20 <= hsv[2] <= 255:
                             color = (255, 0, 0)
-                        elif 0 <= hsv[0] <= 5 and 140 <= hsv[1] < - 255 and 140 <= hsv[2] <= 255:
+                        # red
+                        elif (0 <= hsv[0] <= 5 and 140 <= hsv[1] <= 255 and 140 <= hsv[2] <= 255) or \
+                                (140 <= hsv[0] <= 180 and 140 <= hsv[1] <= 255 and 50 <= hsv[2] <= 255):
                             color = (0, 0, 255)
+                        # orange
+                        elif 6 <= hsv[0] <= 19 and 100 <= hsv[1] <= 200 and 90 <= hsv[2] <= 200:
+                            color = (0, 123, 255)
+                        # yellow
                         elif 20 <= hsv[0] <= 30 and 190 <= hsv[1] <= 255 and 20 <= hsv[2] <= 255:
                             color = (0, 255, 255)
+                        # green
+                        elif 60 <= hsv[0] <= 100 and 150 <= hsv[1] <= 255 and 20 <= hsv[2] <= 160:
+                            color = (0, 255, 0)
+                        # black
                         else:
+                            print(hsv)
                             color = (0, 0, 0)
                         cv2.circle(frame,
                                    (con.cX, con.cY),
