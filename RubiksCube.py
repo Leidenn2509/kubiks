@@ -8,7 +8,16 @@ from copy import deepcopy
 
 def click_event(event, x, y, flags, param):
     if event == cv2.EVENT_LBUTTONDOWN:
+        # print(x, y)
+    # if (event == cv2.EVENT_MOUSEMOVE):
+        print("pixel color")
         print(x, y)
+        print(param.get(0))
+        # frame = cv2.VideoCapture(0).read()
+        # cv2.cvtColor(frame)
+        # color = frame[x, y]
+        # print(cv2.cvtColor(color, cv2.COLOR_BGR2HSV))
+
 
 
 def compress_2d_array(original):
@@ -389,6 +398,7 @@ class CustomContour(object):
 
 
 class RubiksCube:
+
     def __init__(self, debug=False):
         self.data = {}
         self.debug = debug
@@ -402,6 +412,9 @@ class RubiksCube:
         self.median_square_area = 0
         self.median_square_width = 0
         self.size = 3
+        self.color_dict = {"WHITE": (255, 255, 255),
+                           "GREEN" : (0, 255, 0),
+                           "BLUE" : (255, 0, 0)}
 
     def display(self, image, desc, missing=None):
         if not self.debug:
@@ -484,62 +497,112 @@ class RubiksCube:
 
         # 2 for 2x2x2, 3 for 3x3x3, etc
         self.size = 3
+        # self.configuration = []
+
+
+    def analyze_side(self, frame):
+        width = 20
+        count = 0;
+        con_color = []
+        for (con, hsv) in zip(self.sort_by_row_col(deepcopy(self.candidates), self.size), self.data.values()):
+            if con.width:
+                # hsv = cv2.cvtColor(np.uint8([[(color[2], color[1], color[0])]]), cv2.COLOR_BGR2HSV)[0][0]
+                # print(hsv)
+                # minHSV = np.array([98, 109, 20])
+                # maxHSV = np.array([130, 255, 255])
+
+                # print(minHSV)
+                # print(maxHSV)
+
+                # if (0 <= hsv[0] <= 5 and 140 <= hsv[1] <= 255 and 140 <= hsv[2] <= 255) or \
+                #      (140 <= hsv[0] <= 180 and 140 <= hsv[1] <= 255 and 50 <= hsv[2] <= 255):
+                #     print("must be red")
+                # print(hsv)
+                print("++++++++")
+                # print(cv2.inRange(np.uint8([[hsv]]), minHSV, maxHSV))
+
+                # white
+                if 0 <= hsv[1] <= 30 and 150 <= hsv[2] <= 255:
+                    color = self.color_dict['WHITE'] #(255, 255, 255)
+                # blue
+                elif 98 <= hsv[0] <= 130 and 109 <= hsv[1] <= 255 and 20 <= hsv[2] <= 255:
+                    color = (255, 0, 0)
+                # orange
+                elif 2 <= hsv[0] <= 19 and 155 <= hsv[1] <= 211 and 190 <= hsv[2] <= 235:
+                    color = (0, 123, 255)
+                # red
+                elif (0 <= hsv[0] <= 5 and 140 <= hsv[1] <= 255 and 140 <= hsv[2] <= 255) or \
+                        (140 <= hsv[0] <= 180 and 140 <= hsv[1] <= 255 and 50 <= hsv[2] <= 255):
+                    # print("must be red")
+                    # print(hsv)
+                    color = (0, 0, 255)
+                # yellow
+                elif 20 <= hsv[0] <= 40 and 100 <= hsv[1] <= 255 and 20 <= hsv[2] <= 255:
+                    color = (0, 255, 255)
+                # green
+                elif 57 <= hsv[0] <= 80 and 100 <= hsv[1] <= 150 and 120 <= hsv[2] <= 210:
+                    color = (0, 255, 0)
+                # black
+                else:
+                    # print("unknown:")
+                    # print(hsv)
+                    color = (0, 0, 0)
+                cv2.circle(frame,
+                           (con.cX, con.cY),
+                           # int(con.width / 2),
+                           width,
+                           color,
+                           2)
+                con_color.append(color)
+                count = count + 1
+        # print(count)
+        # print("con color")
+        # print(con_color)
+        return count, con_color
+
+
+    def paint_cube_side(self, frame, con_color):
+        if con_color[4] ==
+        cubeImgSize = 20
+        startY = cubeImgSize * 17
+        startX = 10
+        gap = cubeImgSize // 6
+        # print("con color")
+        # print(con_color)
+        for i in range(0, 9):
+            localStartX = startX + cubeImgSize * (i % self.size) + gap * (i % self.size)
+            localStartY = startY + cubeImgSize * (i // self.size) + gap * (i // self.size)
+            cv2.rectangle(frame, (localStartX, localStartY), (localStartX + cubeImgSize, localStartY + cubeImgSize), \
+                          con_color.__getitem__(i), 3)
+
 
     def analyze_video(self):
         cap = cv2.VideoCapture(0)
         cv2.namedWindow('frame')
         self.reset()
+
         # сделать сохранение кубиков, чтобы не "лагало"
+        con_color = []
         while True:
             ret, frame = cap.read()
             if not ret:
                 continue
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            # cv2.setMouseCallback('frame', click_event, self.data.g)
+            cv2.putText(frame, 'halo ms frend', (10, 50), font, 1, (255, 255, 255), 2, cv2.LINE_AA)
             try:
                 if not self.analyze(frame):
                     continue
-                width = 20
-                for (con, hsv) in zip(self.sort_by_row_col(deepcopy(self.candidates), self.size), self.data.values()):
-                    if con.width:
-                        # hsv = cv2.cvtColor(np.uint8([[(color[2], color[1], color[0])]]), cv2.COLOR_BGR2HSV)[0][0]
-                        # print(hsv)
-                        minHSV = np.array([98, 109, 20])
-                        maxHSV = np.array([130, 255, 255])
+                count, con_color = self.analyze_side(frame)
+                if count != self.size*self.size:
+                    continue;
 
-                        # print(minHSV)
-                        # print(maxHSV)
-                        print("++++++++")
-                        # print(cv2.inRange(np.uint8([[hsv]]), minHSV, maxHSV))
-                        # white
-                        if hsv[1] < 50:
-                            color = (255, 255, 255)
-                        # blue
-                        elif 98 <= hsv[0] <= 130 and 109 <= hsv[1] <= 255 and 20 <= hsv[2] <= 255:
-                            color = (255, 0, 0)
-                        # red
-                        elif (0 <= hsv[0] <= 5 and 140 <= hsv[1] <= 255 and 140 <= hsv[2] <= 255) or \
-                                (140 <= hsv[0] <= 180 and 140 <= hsv[1] <= 255 and 50 <= hsv[2] <= 255):
-                            color = (0, 0, 255)
-                        # orange
-                        elif 6 <= hsv[0] <= 19 and 100 <= hsv[1] <= 200 and 90 <= hsv[2] <= 200:
-                            color = (0, 123, 255)
-                        # yellow
-                        elif 20 <= hsv[0] <= 30 and 190 <= hsv[1] <= 255 and 20 <= hsv[2] <= 255:
-                            color = (0, 255, 255)
-                        # green
-                        elif 60 <= hsv[0] <= 100 and 150 <= hsv[1] <= 255 and 20 <= hsv[2] <= 160:
-                            color = (0, 255, 0)
-                        # black
-                        else:
-                            print(hsv)
-                            color = (0, 0, 0)
-                        cv2.circle(frame,
-                                   (con.cX, con.cY),
-                                   # int(con.width / 2),
-                                   width,
-                                   color,
-                                   2)
             except Exception as _:
                 pass
+
+            if len(con_color) == self.size*self.size:
+                self.paint_cube_side(frame, con_color)
+
 
             cv2.imshow('frame', frame)
             self.reset()
