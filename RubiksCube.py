@@ -402,6 +402,25 @@ class RubiksCube:
         self.median_square_area = 0
         self.median_square_width = 0
         self.size = 3
+        self.cubeImgSize = 42
+        self.color_dict = {"WHITE": (255, 255, 255),
+                           "GREEN": (0, 255, 0),
+                           "BLUE": (255, 0, 0),
+                           "RED": (0, 0, 255),
+                           "YELLOW": (0, 255, 255),
+                           "ORANGE": (0, 123, 255),
+                           "BLACK": (0, 0, 0)}
+        self.color_nums = {
+            "ORANGE": 0,
+            "GREEN": 1,
+            "WHITE": 2,
+            "BLUE": 3,
+            "RED": 4,
+            "YELLOW": 5}
+        self.side_colors = []
+        self.side_coordinates = []
+        self.init_side_coords()
+        self.init_side_colors()
 
     def display(self, image, desc, missing=None):
         if not self.debug:
@@ -485,6 +504,22 @@ class RubiksCube:
         # 2 for 2x2x2, 3 for 3x3x3, etc
         self.size = 3
 
+    def analyze_side(self, frame):
+        width = 20
+        count = 0
+        con_color = []
+        for (con, hsv) in zip(self.sort_by_row_col(deepcopy(self.candidates), self.size), self.data.values()):
+            if con.width:
+                color = self.get_absolute_color(hsv)
+                cv2.circle(frame,
+                           (con.cX, con.cY),
+                           width,
+                           color,
+                           2)
+                con_color.append(color)
+                count = count + 1
+        return count, con_color
+
     def get_absolute_color(self, hsv):
         color = None
         if hsv[1] < 50:
@@ -511,6 +546,58 @@ class RubiksCube:
             color = (0, 0, 0)
         return color
 
+    def init_side_coords(self):
+        cubeImgSize = self.cubeImgSize
+        gap = self.cubeImgSize // 2
+        startX = 10
+        startY = cubeImgSize * 6
+        self.side_coordinates.insert(self.color_nums['ORANGE'],
+                                     (startX + (cubeImgSize + gap) * 0, startY + (cubeImgSize + gap) * 1))
+        self.side_coordinates.insert(self.color_nums['GREEN'],
+                                     (startX + (cubeImgSize + gap) * 1, startY + (cubeImgSize + gap) * 0))
+        self.side_coordinates.insert(self.color_nums['WHITE'],
+                                     (startX + (cubeImgSize + gap) * 1, startY + (cubeImgSize + gap) * 1))
+        self.side_coordinates.insert(self.color_nums['BLUE'],
+                                     (startX + (cubeImgSize + gap) * 1, startY + (cubeImgSize + gap) * 2))
+        self.side_coordinates.insert(self.color_nums['RED'],
+                                     (startX + (cubeImgSize + gap) * 2, startY + (cubeImgSize + gap) * 1))
+        self.side_coordinates.insert(self.color_nums['YELLOW'],
+                                     (startX + (cubeImgSize + gap) * 3, startY + (cubeImgSize + gap) * 1))
+
+    def init_side_colors(self):
+        con_color = []
+        for i in range(0, 9):
+            con_color.insert(i, (0, 0, 0))
+        for i in range(0, 6):
+            self.side_colors.insert(i, con_color)
+
+    def paint_cube_sides(self, frame, con_color):
+        center_index = 4
+        if con_color[center_index] == self.color_dict['ORANGE']:
+            self.side_colors[self.color_nums['ORANGE']] = con_color
+        elif con_color[center_index] == self.color_dict['GREEN']:
+            self.side_colors[self.color_nums['GREEN']] = con_color
+        elif con_color[center_index] == self.color_dict['WHITE']:
+            self.side_colors[self.color_nums['WHITE']] = con_color
+        elif con_color[center_index] == self.color_dict['BLUE']:
+            self.side_colors[self.color_nums['BLUE']] = con_color
+        elif con_color[center_index] == self.color_dict['RED']:
+            self.side_colors[self.color_nums['RED']] = con_color
+        elif con_color[center_index] == self.color_dict['YELLOW']:
+            self.side_colors[self.color_nums['YELLOW']] = con_color
+
+        cubeImgSize = self.cubeImgSize // 3
+        gap = self.cubeImgSize // 8
+        for sideIndex in range(0, 6):
+            for i in range(0, 9):
+                localStartX = self.side_coordinates[sideIndex][0] + cubeImgSize * (i % self.size) + gap * (
+                        i % self.size)
+                localStartY = self.side_coordinates[sideIndex][1] + cubeImgSize * (i // self.size) + gap * (
+                        i // self.size)
+                first_voord = (localStartX, localStartY)
+                second_coord = (localStartX + cubeImgSize, localStartY + cubeImgSize)
+                cv2.rectangle(frame, first_voord, second_coord, self.side_colors[sideIndex][i], 3)
+
     def analyze_video(self):
         cap = cv2.VideoCapture(0)
         cv2.namedWindow('frame')
@@ -523,16 +610,11 @@ class RubiksCube:
             try:
                 if not self.analyze(frame):
                     continue
-                width = 20
-                for (con, hsv) in zip(self.sort_by_row_col(deepcopy(self.candidates), self.size), self.data.values()):
-                    if con.width:
-                        color = self.get_absolute_color(hsv)
-                        cv2.circle(frame,
-                                   (con.cX, con.cY),
-                                   # int(con.width / 2),
-                                   width,
-                                   color,
-                                   2)
+
+                count, con_color = self.analyze_side(frame)
+                if count != self.size ** 2:
+                    continue
+                self.paint_cube_sides(frame, con_color)
             except Exception as e:
                 print(e)
 
