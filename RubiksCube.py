@@ -5,6 +5,8 @@ import numpy as np
 from pprint import pformat
 from copy import deepcopy
 
+from kociemba import solve
+
 
 def nothing(*arg):
     pass
@@ -422,6 +424,7 @@ class RubiksCube:
         self.right = None
         self.bottom = None
         self.left = None
+        self.con_color = []
         self.color_dict = {"WHITE": (255, 255, 255),
                            "GREEN": (0, 255, 0),
                            "BLUE": (255, 0, 0),
@@ -430,18 +433,26 @@ class RubiksCube:
                            "ORANGE": (0, 123, 255),
                            "BLACK": (0, 0, 0)}
         self.color_nums = {
-            "ORANGE": 0,
-            "GREEN": 1,
+            "ORANGE": 3,
+            "GREEN": 5,
             "WHITE": 2,
-            "BLUE": 3,
-            "RED": 4,
-            "YELLOW": 5
+            "BLUE": 0,
+            "RED": 1,
+            "YELLOW": 4
+        }
+        self.n_to_char = {
+            0: 'U',
+            1: 'L',
+            2: 'F',
+            3: 'R',
+            4: 'B',
+            5: 'D',
         }
         self.num_colors = {v: k for (k, v) in self.color_nums.items()}
-        self.side_colors = []
+        self.side_colors = [[-1 if j != 4 else i for j in range(0, 9)] for i in range(0, 6)]
         self.side_coordinates = []
         self.init_side_coords()
-        self.init_side_colors()
+        # self.init_side_colors()
         self.color_hsv_borders = {}
         self.init_colors_hsv_borders()
 
@@ -535,7 +546,7 @@ class RubiksCube:
     def init_colors_hsv_borders(self):
         self.color_hsv_borders[self.color_nums['WHITE']] = ((0, 0, 150), (255, 30, 255))
         self.color_hsv_borders[self.color_nums['RED']] = ((140, 140, 50), (180, 255, 255))
-        self.color_hsv_borders[self.color_nums['GREEN']] = ((57, 100, 120), (80, 150, 210))
+        self.color_hsv_borders[self.color_nums['GREEN']] = ((27, 75, 90), (110, 255, 255))
         self.color_hsv_borders[self.color_nums['BLUE']] = ((98, 109, 20), (130, 255, 255))
         self.color_hsv_borders[self.color_nums['ORANGE']] = ((6, 100, 90), (19, 255, 255))
         self.color_hsv_borders[self.color_nums['YELLOW']] = ((20, 190, 20), (40, 255, 255))
@@ -601,34 +612,40 @@ class RubiksCube:
         # white
         # if 0 <= hsv[1] <= 30 and 150 <= hsv[2] <= 255:
         if self.check_color_ranges(hsv, self.color_nums['WHITE']):
-            color = self.color_dict['WHITE']  # (255, 255, 255)
+            # color = self.color_dict['WHITE']  # (255, 255, 255)
+            return self.color_nums['WHITE']
         # blue
         # elif 98 <= hsv[0] <= 130 and 109 <= hsv[1] <= 255 and 20 <= hsv[2] <= 255:
         elif self.check_color_ranges(hsv, self.color_nums['BLUE']):
-            color = self.color_dict['BLUE']  # (255, 0, 0)
+            return self.color_nums['BLUE']
+            # color = self.color_dict['BLUE']  # (255, 0, 0)
         # orange
         # elif 2 <= hsv[0] <= 19 and 155 <= hsv[1] <= 211 and 190 <= hsv[2] <= 235:
         elif self.check_color_ranges(hsv, self.color_nums['ORANGE']):
-            color = self.color_dict['ORANGE']  # (0, 123, 255)
+            return self.color_nums['ORANGE']
+            # color = self.color_dict['ORANGE']  # (0, 123, 255)
         # red
         # elif (0 <= hsv[0] <= 5 and 140 <= hsv[1] <= 255 and 140 <= hsv[2] <= 255) or \
         #         (140 <= hsv[0] <= 180 and 140 <= hsv[1] <= 255 and 50 <= hsv[2] <= 255):
         elif self.check_color_ranges(hsv, self.color_nums['RED']):
-            # print("must be red")
-            # print(hsv)
-            color = self.color_dict['RED']  # (0, 0, 255)
+            return self.color_nums['RED']
+            # color = self.color_dict['RED']  # (0, 0, 255)
         # yellow
         # elif 20 <= hsv[0] <= 40 and 100 <= hsv[1] <= 255 and 20 <= hsv[2] <= 255:
         elif self.check_color_ranges(hsv, self.color_nums['YELLOW']):
-            color = self.color_dict['YELLOW']  # (0, 255, 255)
+            return self.color_nums['YELLOW']
+            # color = self.color_dict['YELLOW']  # (0, 255, 255)
         # green
         # elif 57 <= hsv[0] <= 80 and 100 <= hsv[1] <= 150 and 120 <= hsv[2] <= 210:
         elif self.check_color_ranges(hsv, self.color_nums['GREEN']):
-            color = self.color_dict['GREEN']  # (0, 255, 0)
+            return self.color_nums['GREEN']
+            # color = self.color_dict['GREEN']  # (0, 255, 0)
         # black
         else:
-            color = self.color_dict['BLACK']  # (0, 0, 0)
-        return color
+            # return self.color_nums['BLACK']
+            return -1
+            # color = self.color_dict['BLACK']  # (0, 0, 0)
+        # return color
 
     def analyze_side(self, frame):
         width = 20
@@ -636,14 +653,17 @@ class RubiksCube:
         con_color = []
         for (con, hsv) in zip(self.sort_by_row_col(deepcopy(self.candidates), self.size), self.data.values()):
             if con.width:
-                color = self.get_color(hsv)
+                color_n = self.get_color(hsv)
+                if color_n == -1:
+                    color = self.color_dict['BLACK']
+                else:
+                    color = self.color_dict[self.num_colors[color_n]]
                 cv2.circle(frame,
                            (con.cX, con.cY),
-                           # int(con.width / 2),
                            width,
                            color,
                            2)
-                con_color.append(color)
+                con_color.append(color_n)
                 count = count + 1
         return count, con_color
 
@@ -652,17 +672,23 @@ class RubiksCube:
         gap = self.cubeImgSize // 2
         startX = 10
         startY = cubeImgSize * 6
-        self.side_coordinates.insert(self.color_nums['ORANGE'],
+        # self.side_coordinates.insert(self.color_nums['ORANGE'],
+        self.side_coordinates.insert(1,
                                      (startX + (cubeImgSize + gap) * 0, startY + (cubeImgSize + gap) * 1))
-        self.side_coordinates.insert(self.color_nums['GREEN'],
+        # self.side_coordinates.insert(self.color_nums['GREEN'],
+        self.side_coordinates.insert(0,
                                      (startX + (cubeImgSize + gap) * 1, startY + (cubeImgSize + gap) * 0))
-        self.side_coordinates.insert(self.color_nums['WHITE'],
+        # self.side_coordinates.insert(self.color_nums['WHITE'],
+        self.side_coordinates.insert(2,
                                      (startX + (cubeImgSize + gap) * 1, startY + (cubeImgSize + gap) * 1))
-        self.side_coordinates.insert(self.color_nums['BLUE'],
+        # self.side_coordinates.insert(self.color_nums['BLUE'],
+        self.side_coordinates.insert(5,
                                      (startX + (cubeImgSize + gap) * 1, startY + (cubeImgSize + gap) * 2))
-        self.side_coordinates.insert(self.color_nums['RED'],
+        # self.side_coordinates.insert(self.color_nums['RED'],
+        self.side_coordinates.insert(3,
                                      (startX + (cubeImgSize + gap) * 2, startY + (cubeImgSize + gap) * 1))
-        self.side_coordinates.insert(self.color_nums['YELLOW'],
+        # self.side_coordinates.insert(self.color_nums['YELLOW'],
+        self.side_coordinates.insert(4,
                                      (startX + (cubeImgSize + gap) * 3, startY + (cubeImgSize + gap) * 1))
 
     def init_side_colors(self):
@@ -683,61 +709,57 @@ class RubiksCube:
         con_color[4] = self.color_dict['YELLOW']
         self.side_colors.insert(self.color_nums['YELLOW'], con_color)
 
-    def paint_cube_sides(self, frame, con_color):
+    def save_side(self):
         center_index = 4
-        if con_color[center_index] == self.color_dict['ORANGE']:
-            # startX += (cubeImgSize + gap)*0
-            # startY += (cubeImgSize + gap)*1
-            self.side_colors[self.color_nums['ORANGE']] = con_color
-        elif con_color[center_index] == self.color_dict['GREEN']:
-            # startX += (cubeImgSize + gap)*1
-            # startY += (cubeImgSize + gap)*0
-            self.side_colors[self.color_nums['GREEN']] = con_color
-        elif con_color[center_index] == self.color_dict['WHITE']:
-            # startX += (cubeImgSize + gap)*1
-            # startY += (cubeImgSize + gap)*1
-            self.side_colors[self.color_nums['WHITE']] = con_color
-        elif con_color[center_index] == self.color_dict['BLUE']:
-            # startX += (cubeImgSize + gap)*1
-            # startY += (cubeImgSize + gap)*2
-            self.side_colors[self.color_nums['BLUE']] = con_color
-        elif con_color[center_index] == self.color_dict['RED']:
-            # startX += (cubeImgSize + gap) * 2
-            # startY += (cubeImgSize + gap) * 1
-            self.side_colors[self.color_nums['RED']] = con_color
-        elif con_color[center_index] == self.color_dict['YELLOW']:
-            # startX += (cubeImgSize + gap) * 3
-            # startY += (cubeImgSize + gap) * 1
-            self.side_colors[self.color_nums['YELLOW']] = con_color
+        if self.con_color[center_index] == self.color_nums['ORANGE']:
+            self.side_colors[self.color_nums['ORANGE']] = self.con_color
+        elif self.con_color[center_index] == self.color_nums['GREEN']:
+            self.side_colors[self.color_nums['GREEN']] = self.con_color
+        elif self.con_color[center_index] == self.color_nums['WHITE']:
+            self.side_colors[self.color_nums['WHITE']] = self.con_color
+        elif self.con_color[center_index] == self.color_nums['BLUE']:
+            self.side_colors[self.color_nums['BLUE']] = self.con_color
+        elif self.con_color[center_index] == self.color_nums['RED']:
+            self.side_colors[self.color_nums['RED']] = self.con_color
+        elif self.con_color[center_index] == self.color_nums['YELLOW']:
+            self.side_colors[self.color_nums['YELLOW']] = self.con_color
 
-        cubeImgSize = self.cubeImgSize // 3
+    def paint_cube(self, frame):
+        cube_img_size = self.cubeImgSize // 3
         gap = self.cubeImgSize // 8
-
-        # for sideIndex in range(0, 6):
-        #     i = 4
-        #     localStartX = self.side_coordinates[sideIndex][0] + cubeImgSize * (i % self.size) + gap * (i % self.size)
-        #     localStartY = self.side_coordinates[sideIndex][1] + cubeImgSize * (i // self.size) + gap * (i // self.size)
-        #     first_voord = (localStartX, localStartY)
-        #     second_coord = (localStartX + cubeImgSize, localStartY + cubeImgSize)
-        #     cv2.rectangle(frame, first_voord, second_coord, self.side_colors[sideIndex][i], 3)
 
         for sideIndex in range(0, 6):
             for i in range(0, 9):
-                localStartX = self.side_coordinates[sideIndex][0] + cubeImgSize * (i % self.size) + gap * (
+                local_start_x = self.side_coordinates[sideIndex][0] + cube_img_size * (i % self.size) + gap * (
                         i % self.size)
-                localStartY = self.side_coordinates[sideIndex][1] + cubeImgSize * (i // self.size) + gap * (
+                local_start_y = self.side_coordinates[sideIndex][1] + cube_img_size * (i // self.size) + gap * (
                         i // self.size)
-                first_voord = (localStartX, localStartY)
-                second_coord = (localStartX + cubeImgSize, localStartY + cubeImgSize)
-                cv2.rectangle(frame, first_voord, second_coord, self.side_colors[sideIndex][i], 3)
+                first_coord = (local_start_x, local_start_y)
+                second_coord = (local_start_x + cube_img_size, local_start_y + cube_img_size)
+                n = self.side_colors[sideIndex][i]
+                color = self.color_dict[self.num_colors[n]] if n != -1 else self.color_dict['BLACK']
+                cv2.rectangle(frame, first_coord, second_coord, color, 3)
+
+    def have_all(self):
+        for side in self.side_colors:
+            for cubi in side:
+                if cubi == -1:
+                    return False
+        return True
+
+    def to_string(self):
+        res = []
+        # спс коцемба.
+        for side in [0, 3, 2, 5, 1, 4]:
+            for cubi in self.side_colors[side]:
+                res.append(self.n_to_char[cubi])
+        return ''.join(res)
 
     def analyze_video(self):
         cap = cv2.VideoCapture(0)
         cv2.namedWindow('frame')
-        # cv2.namedWindow('settings')
         self.reset()
-        # сделать сохранение кубиков, чтобы не "лагало"
-        settings = False
+        have_side = False
         while True:
             ret, frame = cap.read()
             if not ret:
@@ -748,17 +770,17 @@ class RubiksCube:
                 settings = True
             if settings:
                 self.update_settings(frame)
+
             try:
                 if not self.analyze(frame):
                     continue
-                count, con_color = self.analyze_side(frame)
+                count, self.con_color = self.analyze_side(frame)
                 if count != self.size * self.size:
                     continue
-                self.paint_cube_sides(frame, con_color)
-
+                have_side = True
             except Exception as _:
                 pass
-
+            self.paint_cube(frame)
             cv2.imshow('frame', frame)
             self.reset()
             key = cv2.waitKey(25) & 0xFF
@@ -766,12 +788,26 @@ class RubiksCube:
                 break
             elif key == ord('c') and settings:
                 self.save_settings_ranges()
+            elif key == ord(' ') and have_side:
+                try:
+                    pass
+                    self.save_side()
+                except Exception as _:
+                    pass
+            elif key == ord('n'):
+                if self.have_all():
+                    string = self.to_string()
+                    print('conf = %s' % string)
+                    print('sol = %s' % solve(string))
+                else:
+                    print(solve('UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB'))
+                    # print('not all size')
             elif key == ord('s'):
                 if settings:
                     cv2.destroyWindow('settings')
                 else:
                     self.create_settings_window()
-
+            have_side = False
         cap.release()
         cv2.destroyAllWindows()
 
