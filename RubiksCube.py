@@ -600,7 +600,7 @@ class RubiksCube:
         cv2.imshow('settings', result)
 
     def save_settings_ranges(self):
-        n = cv2.getTrackbarPos('color', 'settings')
+        n = cv2.getTrackbarPos('mode', 'settings')
         self.color_hsv_borders[n] = self.min_range, self.max_range
 
     def check_color_ranges(self, hsv, color_num):
@@ -787,6 +787,7 @@ class RubiksCube:
             if key == ord('q'):
                 break
             elif key == ord('c') and settings:
+                print('ooooo')
                 self.save_settings_ranges()
             elif key == ord(' ') and have_side:
                 try:
